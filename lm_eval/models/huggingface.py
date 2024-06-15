@@ -1,5 +1,6 @@
 import copy
 import os
+import re
 from datetime import timedelta
 from pathlib import Path
 from typing import List, Literal, Optional, Tuple, Union
@@ -62,6 +63,81 @@ def _get_accelerate_args(
     args["device_map"] = device_map_option
     args["offload_folder"] = offload_folder
     return args
+
+from typing import List, Optional, Union
+
+class ChaiziDict():
+    def __init__(self, eow='↵'):
+
+        self.symbols = '，。？！－＿——⋯⋯「」『』、／：；｜＼～（）《》・·．〈〉“”•＠＃＄％＾＆＊' + eow
+        self.eow = eow
+
+        self._parse_from_file()
+        self._construct_base_vocab()
+        self._extend_dict()
+        self._construct_mapping_from_components_to_words()
+
+    def _parse_from_file(self):
+        with open('/home/charlie911/BPE_tokenizer/chaizi/chaizi-ft.txt') as f:
+            chaizi_ft = f.read()
+        words = chaizi_ft.split('\n')[:-1]
+        self.dictionary = {}
+        for w in words:
+            character = w.split('\t')[0]
+            combinations = w.split('\t')[1:]
+            self.dictionary[character] = []
+            for c in combinations:
+                parts = c.split(' ')
+                self.dictionary[character].append(parts)
+
+        with open('/home/charlie911/BPE_tokenizer/chaizi/chaizi-jt.txt') as f:
+            chaizi_jt = f.read()
+        words = chaizi_jt.split('\n')[:-1]
+        for w in words:
+            character = w.split('\t')[0]
+            if character not in self.dictionary.keys():
+                combinations = w.split('\t')[1:]
+                self.dictionary[character] = []
+                for c in combinations:
+                    parts = c.split(' ')
+                    self.dictionary[character].append(parts)
+
+    def _construct_base_vocab(self):
+        self.base_vocab = {self.eow}
+        for parts in self.dictionary.values():
+            self.base_vocab.update(parts[0])
+
+    def _extend_dict(self):
+        # append dictionary with base vocab
+        for word in self.base_vocab:
+            if word not in self.dictionary.keys():
+                self.dictionary[word] = [[word]]
+        # add symbols
+        for symbol in self.symbols:
+            self.dictionary[symbol] = [[symbol]]
+
+    def _construct_mapping_from_components_to_words(self):
+        self.reverse_dict = {}
+        for word, components in self.dictionary.items():
+            for c in components:
+                concat = ''.join(c)
+                self.reverse_dict[concat] = word
+
+    def get_base_vocab(self):
+        return list(self.base_vocab)
+
+    def get_num_base_vovab(self):
+        return len(self.base_vocab)
+
+    def get_collected_words(self):
+        return list(self.dictionary.keys())
+
+    def chaizi(self, word: str):
+        return self.dictionary.get(word, None)
+
+    def ensemble(self, components: str):
+        components = components.rstrip(self.eow)
+        return self.reverse_dict.get(components, None)
 
 
 @register_model("hf-auto", "hf", "huggingface")
@@ -242,6 +318,8 @@ class HFLM(TemplateLM):
             trust_remote_code=trust_remote_code,
             use_fast_tokenizer=use_fast_tokenizer,
         )
+
+        self._create_chaizi_dict()
 
         self.truncation = truncation
         self.logits_cache = logits_cache
@@ -639,8 +717,12 @@ class HFLM(TemplateLM):
                 )
             else:
                 assert isinstance(
-                    tokenizer, transformers.PreTrainedTokenizer
-                ) or isinstance(tokenizer, transformers.PreTrainedTokenizerFast)
+                    tokenizer,
+                    (
+                        transformers.PreTrainedTokenizer,
+                        transformers.PreTrainedTokenizerFast,
+                    ),
+                )
                 self.tokenizer = tokenizer
         else:
             # Get tokenizer based on 'pretrained'
@@ -655,7 +737,19 @@ class HFLM(TemplateLM):
                 trust_remote_code=trust_remote_code,
                 use_fast=use_fast_tokenizer,
             )
+        self.sor = '<|start_of_replacement|>'
+        self.eor = '<|end_of_replacement|>'
+        self.tokenizer.add_special_tokens({
+            "pad_token":"<pad>",
+            "unk_token":"<unk>",
+            "additional_special_tokens": ['<|start_of_replacement|>', '<|end_of_replacement|>']
+            })
         return None
+
+    def _create_chaizi_dict(self):
+        self.chaizi_dict = ChaiziDict()
+        self.chaizi_collected_words = self.chaizi_dict.get_collected_words()
+        print("Chaizi dictionary created")
 
     def _detect_batch_size(self, requests=None, pos: int = 0):
         if requests:
@@ -713,23 +807,17 @@ class HFLM(TemplateLM):
         return batch_size
 
     def tok_encode(
-        self, string: str, left_truncate_len=None, add_special_tokens=None
+        self, string: str, left_truncate_len=None, add_special_tokens=True
     ) -> List[int]:
-        """ """
-        # default for None - empty dict, use predefined tokenizer param
-        # used for all models except for CausalLM or predefined value
-        special_tokens_kwargs = {}
+        print(f"string before chaizi: {string}")
+        for word in string:
+            if word in self.chaizi_collected_words:
+                chaizi = self.chaizi_dict.chaizi(word)
+                string = string.replace(word, ''.join(chaizi[0]))
+        print(f"after: {string}")
 
-        # by default for CausalLM - false or self.add_bos_token is set
-        if add_special_tokens is None:
-            if self.AUTO_MODEL_CLASS == transformers.AutoModelForCausalLM:
-                special_tokens_kwargs = {
-                    "add_special_tokens": False or self.add_bos_token
-                }
-        # otherwise the method explicitly defines the value
-        else:
-            special_tokens_kwargs = {"add_special_tokens": add_special_tokens}
-
+        # add_special_tokens default to be True due to the setting of inputs
+        special_tokens_kwargs = {"add_special_tokens": add_special_tokens}
         encoding = self.tokenizer.encode(string, **special_tokens_kwargs)
 
         # left-truncate the encoded context to be at most `left_truncate_len` tokens long
@@ -749,10 +837,15 @@ class HFLM(TemplateLM):
         old_padding_side = self.tokenizer.padding_side
         self.tokenizer.padding_side = padding_side
 
-        add_special_tokens = {}
-        if self.AUTO_MODEL_CLASS == transformers.AutoModelForCausalLM:
-            add_special_tokens = {"add_special_tokens": False or self.add_bos_token}
+        print("batch encode")
+        print(f"string before chaizi: {string}")
+        for word in string:
+            if word in self.chaizi_collected_words:
+                chaizi = self.chaizi_dict.chaizi(word)
+                string = string.replace(word, ''.join(chaizi[0]))
+        print(f"after: {string}")
 
+        add_special_tokens = {"add_special_tokens": True}
         encoding = self.tokenizer(
             strings,
             truncation=truncation,
@@ -769,8 +862,14 @@ class HFLM(TemplateLM):
 
         return encoding["input_ids"], encoding["attention_mask"]
 
-    def tok_decode(self, tokens, skip_special_tokens=True):
-        return self.tokenizer.decode(tokens, skip_special_tokens=skip_special_tokens)
+    def tok_decode(self, tokens, skip_special_tokens=False):
+        decoded = self.tokenizer.decode(tokens, skip_special_tokens=skip_special_tokens)
+        print(f"decoded before ensemble: {decoded}")
+        replacements = re.findall(r'<\|start_of_replacement\|>(.*?)<\|end_of_replacement\|>', decoded)
+        for component in replacements:
+            decoded = decoded.replace(self.sor+component+self.eor, self.chaizi_dict.ensemble(component))
+        print(f"after: {decoded}")
+        return decoded
 
     def _model_call(self, inps, attn_mask=None, labels=None):
         """

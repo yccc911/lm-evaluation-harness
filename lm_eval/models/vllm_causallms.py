@@ -160,16 +160,15 @@ class VLLM(TemplateLM):
             return self._max_length
         if self.data_parallel_size <= 1:
             return self.model.llm_engine.model_config.max_model_len
-        else:
-            seqlen_config_attrs = ("n_positions", "max_position_embeddings", "n_ctx")
-            for attr in seqlen_config_attrs:
-                if hasattr(self._config, attr):
-                    return getattr(self._config, attr)
-            if hasattr(self.tokenizer, "model_max_length"):
-                if self.tokenizer.model_max_length == 1000000000000000019884624838656:
-                    return self._DEFAULT_MAX_LENGTH
-                return self.tokenizer.model_max_length
-            return self._DEFAULT_MAX_LENGTH
+        seqlen_config_attrs = ("n_positions", "max_position_embeddings", "n_ctx")
+        for attr in seqlen_config_attrs:
+            if hasattr(self._config, attr):
+                return getattr(self._config, attr)
+        if hasattr(self.tokenizer, "model_max_length"):
+            if self.tokenizer.model_max_length == 1000000000000000019884624838656:
+                return self._DEFAULT_MAX_LENGTH
+            return self.tokenizer.model_max_length
+        return self._DEFAULT_MAX_LENGTH
 
     @property
     def max_gen_toks(self):
