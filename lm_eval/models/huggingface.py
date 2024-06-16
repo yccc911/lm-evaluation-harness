@@ -171,7 +171,7 @@ class HFLM(TemplateLM):
         logits_cache: bool = True,
         max_length: Optional[int] = None,
         device: Optional[str] = "cuda",
-        dtype: Optional[Union[str, torch.dtype]] = "auto",
+        dtype: Optional[Union[str, torch.dtype]] = "bfloat16",
         batch_size: Optional[Union[int, str]] = 1,
         max_batch_size: Optional[int] = 64,
         trust_remote_code: Optional[bool] = False,
