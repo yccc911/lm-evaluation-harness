@@ -810,7 +810,6 @@ class HFLM(TemplateLM):
     def tok_encode(
         self, string: str, left_truncate_len=None, add_special_tokens=True
     ) -> List[int]:
-        print(f"string before chaizi: {string}")
         text = ""
         for word in string:
             prob = random.random()
@@ -845,8 +844,6 @@ class HFLM(TemplateLM):
         old_padding_side = self.tokenizer.padding_side
         self.tokenizer.padding_side = padding_side
 
-        print("batch encode")
-        print(f"string before chaizi: {strings}")
         for idx, string in enumerate(strings):
             text = ""
             for word in string:
@@ -881,8 +878,6 @@ class HFLM(TemplateLM):
 
     def tok_decode(self, tokens, skip_special_tokens=False):
         decoded = self.tokenizer.decode(tokens, skip_special_tokens=skip_special_tokens)
-
-        print(f"decoded before ensemble: {decoded}")
 
         # for cases with special tokens
         replacements = re.findall(r'<\|start_of_replacement\|>(.*?)<\|end_of_replacement\|>', decoded)
