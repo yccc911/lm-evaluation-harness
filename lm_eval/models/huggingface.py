@@ -1,6 +1,7 @@
 import copy
 import os
 import re
+import random
 from datetime import timedelta
 from pathlib import Path
 from typing import List, Literal, Optional, Tuple, Union
@@ -810,15 +811,22 @@ class HFLM(TemplateLM):
         self, string: str, left_truncate_len=None, add_special_tokens=True
     ) -> List[int]:
         print(f"string before chaizi: {string}")
+        text = ""
         for word in string:
-            if word in self.chaizi_collected_words:
-                chaizi = self.chaizi_dict.chaizi(word)
-                string = string.replace(word, ''.join(chaizi[0]))
-        print(f"after: {string}")
+            prob = random.random()
+            if prob < 0.3 and word in self.chaizi_collected_words:
+                components = "".join(self.chaizi_dict.chaizi(word)[0])
+                if prob < 0.15:
+                    text += f"{self.sor}{components}{self.eor}"
+                else:
+                    text += f"（{components}）"
+            else:
+                text += word
+        print(f"after: {text}")
 
         # add_special_tokens default to be True due to the setting of inputs
         special_tokens_kwargs = {"add_special_tokens": add_special_tokens}
-        encoding = self.tokenizer.encode(string, **special_tokens_kwargs)
+        encoding = self.tokenizer.encode(text, **special_tokens_kwargs)
 
         # left-truncate the encoded context to be at most `left_truncate_len` tokens long
         if left_truncate_len:
@@ -838,12 +846,21 @@ class HFLM(TemplateLM):
         self.tokenizer.padding_side = padding_side
 
         print("batch encode")
-        print(f"string before chaizi: {string}")
-        for word in string:
-            if word in self.chaizi_collected_words:
-                chaizi = self.chaizi_dict.chaizi(word)
-                string = string.replace(word, ''.join(chaizi[0]))
-        print(f"after: {string}")
+        print(f"string before chaizi: {strings}")
+        for idx, string in enumerate(strings):
+            text = ""
+            for word in string:
+                prob = random.random()
+                if prob < 0.3 and word in self.chaizi_collected_words:
+                    components = "".join(self.chaizi_dict.chaizi(word)[0])
+                    if prob < 0.15:
+                        text += f"{self.sor}{components}{self.eor}"
+                    else:
+                        text += f"（{components}）"
+                else:
+                    text += word
+            strings[idx] = text
+        print(f"after: {strings}")
 
         add_special_tokens = {"add_special_tokens": True}
         encoding = self.tokenizer(
@@ -864,11 +881,23 @@ class HFLM(TemplateLM):
 
     def tok_decode(self, tokens, skip_special_tokens=False):
         decoded = self.tokenizer.decode(tokens, skip_special_tokens=skip_special_tokens)
+
         print(f"decoded before ensemble: {decoded}")
+
+        # for cases with special tokens
         replacements = re.findall(r'<\|start_of_replacement\|>(.*?)<\|end_of_replacement\|>', decoded)
         for component in replacements:
             decoded = decoded.replace(self.sor+component+self.eor, self.chaizi_dict.ensemble(component))
+
+        # for cases with parentheses
+        replacements += re.findall(r'（(.*?)）', decoded)
+        for component in replacements:
+            decoded = decoded.replace(f'（{component}）', self.chaizi_dict.ensemble(component))
+
         print(f"after: {decoded}")
+
+        # get rid of other special tokens
+        decoded = decoded.replace('<|begin_of_text|>', '').replace('<|eot_id|>', '')
         return decoded
 
     def _model_call(self, inps, attn_mask=None, labels=None):
