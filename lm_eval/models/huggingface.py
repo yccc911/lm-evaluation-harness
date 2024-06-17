@@ -820,8 +820,7 @@ class HFLM(TemplateLM):
                 else:
                     text += f"（{components}）"
             else:
-                text += word
-        print(f"after: {text}")
+                text += words
 
         # add_special_tokens default to be True due to the setting of inputs
         special_tokens_kwargs = {"add_special_tokens": add_special_tokens}
@@ -857,7 +856,6 @@ class HFLM(TemplateLM):
                 else:
                     text += word
             strings[idx] = text
-        print(f"after: {strings}")
 
         add_special_tokens = {"add_special_tokens": True}
         encoding = self.tokenizer(
@@ -888,8 +886,6 @@ class HFLM(TemplateLM):
         replacements += re.findall(r'（(.*?)）', decoded)
         for component in replacements:
             decoded = decoded.replace(f'（{component}）', self.chaizi_dict.ensemble(component))
-
-        print(f"after: {decoded}")
 
         # get rid of other special tokens if specified
         if skip_special_tokens:
