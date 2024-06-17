@@ -866,13 +866,13 @@ class HFLM(TemplateLM):
                     text += word
             strings[idx] = text
 
-        add_special_tokens = {"add_special_tokens": True}
+        special_tokens_kwargs = {"add_special_tokens": True}
         encoding = self.tokenizer(
             strings,
             truncation=truncation,
             padding="longest",
             return_tensors="pt",
-            **add_special_tokens,
+            **special_tokens_kwargs,
         )
         if left_truncate_len:
             encoding["input_ids"] = encoding["input_ids"][:, -left_truncate_len:]
@@ -880,6 +880,10 @@ class HFLM(TemplateLM):
                 :, -left_truncate_len:
             ]
         self.tokenizer.padding_side = old_padding_side
+
+        if self.add_bos_token and encoding['input_ids'][0] == self.tokenizer.bos_token_id:
+            encoding['input_ids'] = encoding['input_ids'][1:]
+            encoding['attention_mask'] = encoding['attention_mask'][1:]
 
         return encoding["input_ids"], encoding["attention_mask"]
 
