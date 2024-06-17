@@ -322,6 +322,7 @@ class TemplateLM(LM):
     ) -> List[Tuple[float, bool]]:
         new_reqs = []
         for context, continuation in [req.args for req in requests]:
+            print(context, continuation)
             if context == "":
                 # BOS or EOS as context
                 context_enc, continuation_enc = (
