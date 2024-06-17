@@ -738,13 +738,10 @@ class HFLM(TemplateLM):
                 trust_remote_code=trust_remote_code,
                 use_fast=use_fast_tokenizer,
             )
+
         self.sor = '<|start_of_replacement|>'
         self.eor = '<|end_of_replacement|>'
-        self.tokenizer.add_special_tokens({
-            "pad_token":"<pad>",
-            "unk_token":"<unk>",
-            "additional_special_tokens": ['<|start_of_replacement|>', '<|end_of_replacement|>']
-            })
+
         return None
 
     def _create_chaizi_dict(self):
