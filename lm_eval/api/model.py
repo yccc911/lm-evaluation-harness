@@ -306,8 +306,8 @@ class TemplateLM(LM):
         context_enc = self.tok_encode(context)
         continuation_enc = self.tok_encode(continuation)
 
-        print("len(context_enc): ", len(context_enc))
-        print("len(continuation_enc): ", len(continuation_enc))
+        eval_logger.debug("len(context_enc): ", len(context_enc))
+        eval_logger.debug("len(continuation_enc): ", len(continuation_enc))
 
         return context_enc, continuation_enc
 
@@ -316,10 +316,11 @@ class TemplateLM(LM):
     ) -> List[Tuple[float, bool]]:
         new_reqs = []
         for context, continuation in [req.args for req in requests]:
-            print("context in loglikelihood")
-            print(context)
-            print("continuation in loglikelihood")
-            print(continuation)
+            eval_logger.debug("context in loglikelihood")
+            eval_logger.debug(context)
+            eval_logger.debug("continuation in loglikelihood")
+            eval_logger.debug(continuation)
+
             if context == "":
                 # BOS or EOS as context
                 context_enc, continuation_enc = (
