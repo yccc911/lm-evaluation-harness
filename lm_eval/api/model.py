@@ -314,6 +314,12 @@ class TemplateLM(LM):
 
             context_enc_len = len(context_enc)
             continuation_enc = whole_enc[context_enc_len:]
+            print("context_enc: ", context_enc)
+            print("continuation_enc: ", continuation_enc)
+            print("whole_enc: ", whole_enc)
+            print("context_enc_len: ", context_enc_len)
+            print("len(whole_enc): ", len(whole_enc))
+            print("len(continuation_enc): ", len(continuation_enc))
 
         return context_enc, continuation_enc
 

@@ -820,7 +820,7 @@ class HFLM(TemplateLM):
                 else:
                     text += f"（{components}）"
             else:
-                text += words
+                text += word
 
         # add_special_tokens default to be True due to the setting of inputs
         special_tokens_kwargs = {"add_special_tokens": add_special_tokens}
