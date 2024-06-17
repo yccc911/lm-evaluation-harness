@@ -892,7 +892,8 @@ class HFLM(TemplateLM):
         print(f"after: {decoded}")
 
         # get rid of other special tokens
-        decoded = decoded.replace('<|begin_of_text|>', '').replace('<|eot_id|>', '')
+        if skip_special_tokens:
+            decoded = decoded.replace('<|begin_of_text|>', '').replace('<|eot_id|>', '')
         return decoded
 
     def _model_call(self, inps, attn_mask=None, labels=None):
