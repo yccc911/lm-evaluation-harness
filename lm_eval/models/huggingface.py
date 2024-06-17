@@ -822,13 +822,22 @@ class HFLM(TemplateLM):
             else:
                 text += word
 
-        # add_special_tokens default to be True due to the setting of inputs
-        special_tokens_kwargs = {"add_special_tokens": add_special_tokens}
+        # add_special_tokens default to be True due to the replacement setting
+        special_tokens_kwargs = {"add_special_tokens": True}
         encoding = self.tokenizer.encode(text, **special_tokens_kwargs)
 
         # left-truncate the encoded context to be at most `left_truncate_len` tokens long
         if left_truncate_len:
             encoding = encoding[-left_truncate_len:]
+
+        # remove bos and eos tokens if they are not desired
+        if not add_special_tokens:
+            if encoding['input_ids'][0] == self.tokenizer.bos_token_id:
+                encoding['input_ids'] = encoding['input_ids'][1:]
+                encoding['attention_mask'] = encoding['attention_mask'][1:]
+            if encoding['input_ids'][-1] == self.tokenizer.eos_token_id:
+                encoding['input_ids'] = encoding['input_ids'][:-1]
+                encoding['attention_mask'] = encoding['attention_mask'][:-1]
 
         return encoding
 

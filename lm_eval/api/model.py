@@ -303,23 +303,11 @@ class TemplateLM(LM):
             continuation = context[-n_spaces:] + continuation
             context = context[:-n_spaces]
 
-        model_class = getattr(self, "AUTO_MODEL_CLASS", None)
+        context_enc = self.tok_encode(context)
+        continuation_enc = self.tok_encode(continuation)
 
-        if model_class == transformers.AutoModelForSeq2SeqLM:
-            context_enc = self.tok_encode(context)
-            continuation_enc = self.tok_encode(continuation, add_special_tokens=False)
-        else:
-            whole_enc = self.tok_encode(context + continuation)
-            context_enc = self.tok_encode(context)
-
-            context_enc_len = len(context_enc)
-            continuation_enc = whole_enc[context_enc_len:]
-            print("context_enc: ", context_enc)
-            print("continuation_enc: ", continuation_enc)
-            print("whole_enc: ", whole_enc)
-            print("context_enc_len: ", context_enc_len)
-            print("len(whole_enc): ", len(whole_enc))
-            print("len(continuation_enc): ", len(continuation_enc))
+        print("len(context_enc): ", len(context_enc))
+        print("len(continuation_enc): ", len(continuation_enc))
 
         return context_enc, continuation_enc
 
