@@ -178,6 +178,7 @@ class HFLM(TemplateLM):
         use_fast_tokenizer: Optional[bool] = True,
         add_bos_token: Optional[bool] = False,
         prefix_token_id: Optional[int] = None,
+        tokenize_settings: Optional[str] = "default",
         # arguments used for splitting a model across GPUs naively.
         # only used if `parallelize=True`.
         parallelize: Optional[bool] = False,
@@ -322,6 +323,7 @@ class HFLM(TemplateLM):
         )
 
         self._create_chaizi_dict()
+        self.tokenize_settings = tokenize_settings
 
         self.truncation = truncation
         self.logits_cache = logits_cache
@@ -812,19 +814,34 @@ class HFLM(TemplateLM):
         self, string: str, left_truncate_len=None, add_special_tokens=True
     ) -> List[int]:
         
-        # # random replacement settings
-        # text = ""
-        # for word in string:
-        #     prob = random.random()
-        #     if prob < 0.3 and word in self.chaizi_collected_words:
-        #         components = "".join(self.chaizi_dict.chaizi(word)[0])
-        #         if prob < 0.15:
-        #             text += f"{self.sor}{components}{self.eor}"
-        #         else:
-        #             text += f"（{components}）"
-        #     else:
-        #         text += word
-        # string = text
+        if self.tokenize_settings == "random_replacement":
+            text = ""
+            for word in string:
+                prob = random.random()
+                if prob < 0.3 and word in self.chaizi_collected_words:
+                    components = "".join(self.chaizi_dict.chaizi(word)[0])
+                    if prob < 0.15:
+                        text += f"{self.bor}{components}{self.eor}"
+                    else:
+                        text += f"（{components}）"
+                else:
+                    text += word
+            string = text
+        elif self.tokenize_settings == "rare_words_chaizi":
+            text = ""
+            for word in string:
+                if word in self.chaizi_collected_words:
+                    encoded = self.tokenizer(word, return_attention_mask=False)
+                    if len(encoded['input_ids']) == 2:
+                        text += word
+                    else:
+                        components = "".join(self.chaizi_dict.chaizi(word)[0])
+                        text += self.bor + components + self.eor
+                else:
+                    text += word
+            string = text
+        elif self.tokenize_settings == "rare_words_ids":
+            pass
 
         # add_special_tokens default to be True due to the replacement setting
         special_tokens_kwargs = {"add_special_tokens": True}
@@ -856,20 +873,36 @@ class HFLM(TemplateLM):
         old_padding_side = self.tokenizer.padding_side
         self.tokenizer.padding_side = padding_side
 
-        # # random replacement settings
-        # for idx, string in enumerate(strings):
-        #     text = ""
-        #     for word in string:
-        #         prob = random.random()
-        #         if prob < 0.3 and word in self.chaizi_collected_words:
-        #             components = "".join(self.chaizi_dict.chaizi(word)[0])
-        #             if prob < 0.15:
-        #                 text += f"{self.sor}{components}{self.eor}"
-        #             else:
-        #                 text += f"（{components}）"
-        #         else:
-        #             text += word
-        #     strings[idx] = text
+        if self.tokenize_settings == "random_replacement":
+            for idx, string in enumerate(strings):
+                text = ""
+                for word in string:
+                    prob = random.random()
+                    if prob < 0.3 and word in self.chaizi_collected_words:
+                        components = "".join(self.chaizi_dict.chaizi(word)[0])
+                        if prob < 0.15:
+                            text += f"{self.bor}{components}{self.eor}"
+                        else:
+                            text += f"（{components}）"
+                    else:
+                        text += word
+                strings[idx] = text
+        elif self.tokenize_settings == "rare_words_chaizi":
+            for idx, string in enumerate(strings):
+                text = ""
+                for word in string:
+                    if word in self.chaizi_collected_words:
+                        encoded = self.tokenizer(word, return_attention_mask=False)
+                        if len(encoded['input_ids']) == 2:
+                            text += word
+                        else:
+                            components = "".join(self.chaizi_dict.chaizi(word)[0])
+                            text += self.bor + components + self.eor
+                    else:
+                        text += word
+                strings[idx] = text
+        elif self.tokenize_settings == "rare_words_ids":
+            pass
 
         special_tokens_kwargs = {"add_special_tokens": True}
         encoding = self.tokenizer(
@@ -898,7 +931,7 @@ class HFLM(TemplateLM):
         # for cases with special tokens
         replacements = re.findall(r'<\|start_of_replacement\|>(.*?)<\|end_of_replacement\|>', decoded)
         for component in replacements:
-            decoded = decoded.replace(self.sor+component+self.eor, self.chaizi_dict.ensemble(component))
+            decoded = decoded.replace(self.bor+component+self.eor, self.chaizi_dict.ensemble(component))
 
         # for cases with parentheses
         replacements += re.findall(r'（(.*?)）', decoded)
