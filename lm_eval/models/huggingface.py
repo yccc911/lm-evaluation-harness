@@ -745,7 +745,7 @@ class HFLM(TemplateLM):
                 use_fast=use_fast_tokenizer,
             )
 
-        self.sor = '<|start_of_replacement|>'
+        self.bor = '<|start_of_replacement|>'
         self.eor = '<|end_of_replacement|>'
 
         return None
