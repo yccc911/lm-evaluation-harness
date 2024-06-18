@@ -813,7 +813,7 @@ class HFLM(TemplateLM):
     def tok_encode(
         self, string: str, left_truncate_len=None, add_special_tokens=True
     ) -> List[int]:
-        
+
         if self.tokenize_settings == "random_replacement":
             text = ""
             for word in string:
