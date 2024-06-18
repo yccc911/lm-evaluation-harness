@@ -811,21 +811,24 @@ class HFLM(TemplateLM):
     def tok_encode(
         self, string: str, left_truncate_len=None, add_special_tokens=True
     ) -> List[int]:
-        text = ""
-        for word in string:
-            prob = random.random()
-            if prob < 0.3 and word in self.chaizi_collected_words:
-                components = "".join(self.chaizi_dict.chaizi(word)[0])
-                if prob < 0.15:
-                    text += f"{self.sor}{components}{self.eor}"
-                else:
-                    text += f"（{components}）"
-            else:
-                text += word
+        
+        # # random replacement settings
+        # text = ""
+        # for word in string:
+        #     prob = random.random()
+        #     if prob < 0.3 and word in self.chaizi_collected_words:
+        #         components = "".join(self.chaizi_dict.chaizi(word)[0])
+        #         if prob < 0.15:
+        #             text += f"{self.sor}{components}{self.eor}"
+        #         else:
+        #             text += f"（{components}）"
+        #     else:
+        #         text += word
+        # string = text
 
         # add_special_tokens default to be True due to the replacement setting
         special_tokens_kwargs = {"add_special_tokens": True}
-        encoding = self.tokenizer.encode(text, **special_tokens_kwargs)
+        encoding = self.tokenizer.encode(string, **special_tokens_kwargs)
 
         # left-truncate the encoded context to be at most `left_truncate_len` tokens long
         if left_truncate_len:
@@ -853,19 +856,20 @@ class HFLM(TemplateLM):
         old_padding_side = self.tokenizer.padding_side
         self.tokenizer.padding_side = padding_side
 
-        for idx, string in enumerate(strings):
-            text = ""
-            for word in string:
-                prob = random.random()
-                if prob < 0.3 and word in self.chaizi_collected_words:
-                    components = "".join(self.chaizi_dict.chaizi(word)[0])
-                    if prob < 0.15:
-                        text += f"{self.sor}{components}{self.eor}"
-                    else:
-                        text += f"（{components}）"
-                else:
-                    text += word
-            strings[idx] = text
+        # # random replacement settings
+        # for idx, string in enumerate(strings):
+        #     text = ""
+        #     for word in string:
+        #         prob = random.random()
+        #         if prob < 0.3 and word in self.chaizi_collected_words:
+        #             components = "".join(self.chaizi_dict.chaizi(word)[0])
+        #             if prob < 0.15:
+        #                 text += f"{self.sor}{components}{self.eor}"
+        #             else:
+        #                 text += f"（{components}）"
+        #         else:
+        #             text += word
+        #     strings[idx] = text
 
         special_tokens_kwargs = {"add_special_tokens": True}
         encoding = self.tokenizer(
