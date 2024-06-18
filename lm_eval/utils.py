@@ -59,6 +59,8 @@ def handle_arg_string(arg):
         return True
     elif arg.lower() == "false":
         return False
+    elif arg.lower() == "none":
+        return None
     elif arg.isnumeric():
         return int(arg)
     try:
