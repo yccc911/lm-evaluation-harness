@@ -68,14 +68,9 @@ def _get_accelerate_args(
 from typing import List, Optional, Union
 
 class ChaiziDict():
-    def __init__(self, eow='↵'):
-
-        self.symbols = '，。？！－＿——⋯⋯「」『』、／：；｜＼～（）《》・·．〈〉“”•＠＃＄％＾＆＊' + eow
-        self.eow = eow
-
+    def __init__(self):
         self._parse_from_file()
         self._construct_base_vocab()
-        self._extend_dict()
         self._construct_mapping_from_components_to_words()
 
     def _parse_from_file(self):
@@ -108,15 +103,6 @@ class ChaiziDict():
         for parts in self.dictionary.values():
             self.base_vocab.update(parts[0])
 
-    def _extend_dict(self):
-        # append dictionary with base vocab
-        for word in self.base_vocab:
-            if word not in self.dictionary.keys():
-                self.dictionary[word] = [[word]]
-        # add symbols
-        for symbol in self.symbols:
-            self.dictionary[symbol] = [[symbol]]
-
     def _construct_mapping_from_components_to_words(self):
         self.reverse_dict = {}
         for word, components in self.dictionary.items():
@@ -140,6 +126,33 @@ class ChaiziDict():
         components = components.rstrip(self.eow)
         return self.reverse_dict.get(components, None)
 
+class IDSDict():
+    def __init__(self):
+        self._parse_from_file()
+        self._construct_mapping_from_components_to_words()
+
+    def _parse_from_file(self):
+        with open('/home/charlie911/BPE_tokenizer/ids/IDS-UCS-Basic.txt') as f:
+            words = f.readlines()[1:]
+        self.dictionary = {}
+        for w in words:
+            character = w.split('\t')[1]
+            components = w.split('\t')[2]
+            self.dictionary[character] = components.replace('\n', '')
+
+    def _construct_mapping_from_components_to_words(self):
+        self.reverse_dict = {}
+        for word, components in self.dictionary.items():
+            self.reverse_dict[components] = word
+
+    def get_collected_words(self):
+        return list(self.dictionary.keys())
+
+    def disassemble(self, word: str):
+        return self.dictionary.get(word, None)
+
+    def ensemble(self, components: str):
+        return self.reverse_dict.get(components, None)
 
 @register_model("hf-auto", "hf", "huggingface")
 class HFLM(TemplateLM):
@@ -322,8 +335,11 @@ class HFLM(TemplateLM):
             use_fast_tokenizer=use_fast_tokenizer,
         )
 
-        self._create_chaizi_dict()
         self.tokenize_settings = tokenize_settings
+        if self.tokenize_settings == "rare_words_chaizi":
+            self._create_chaizi_dict()
+        elif self.tokenize_settings == "rare_words_ids":
+            self._create_ids_dict()
 
         self.truncation = truncation
         self.logits_cache = logits_cache
@@ -752,8 +768,13 @@ class HFLM(TemplateLM):
 
     def _create_chaizi_dict(self):
         self.chaizi_dict = ChaiziDict()
-        self.chaizi_collected_words = self.chaizi_dict.get_collected_words()
+        self.mapping_dict_collected_words = self.chaizi_dict.get_collected_words()
         print("Chaizi dictionary created")
+
+    def _create_ids_dict(self):
+        self.ids_dict = IDSDict()
+        self.mapping_dict_collected_words = self.ids_dict.get_collected_words()
+        print("IDS dictionary created")
 
     def _detect_batch_size(self, requests=None, pos: int = 0):
         if requests:
@@ -818,7 +839,7 @@ class HFLM(TemplateLM):
             text = ""
             for word in string:
                 prob = random.random()
-                if prob < 0.3 and word in self.chaizi_collected_words:
+                if prob < 0.3 and word in self.mapping_dict_collected_words:
                     components = "".join(self.chaizi_dict.chaizi(word)[0])
                     if prob < 0.15:
                         text += f"{self.bor}{components}{self.eor}"
@@ -830,8 +851,8 @@ class HFLM(TemplateLM):
         elif self.tokenize_settings == "rare_words_chaizi":
             text = ""
             for word in string:
-                if word in self.chaizi_collected_words:
-                    encoded = self.tokenizer(word, return_attention_mask=False)
+                if word in self.mapping_dict_collected_words:
+                    encoded = self.tokenizer(word, return_attention_mask=False, add_special_tokens=True)
                     if len(encoded['input_ids']) == 2:
                         text += word
                     else:
@@ -841,7 +862,18 @@ class HFLM(TemplateLM):
                     text += word
             string = text
         elif self.tokenize_settings == "rare_words_ids":
-            pass
+            text = ""
+            for word in string:
+                if word in self.mapping_dict_collected_words:
+                    encoded = self.tokenizer(word, return_attention_mask=False, add_special_tokens=True)
+                    if len(encoded['input_ids']) == 2:
+                        text += word
+                    else:
+                        components = "".join(self.ids_dict.disassemble(word)[0])
+                        text += self.bor + components + self.eor
+                else:
+                    text += word
+            string = text
 
         # add_special_tokens default to be True due to the replacement setting
         special_tokens_kwargs = {"add_special_tokens": True}
@@ -878,7 +910,7 @@ class HFLM(TemplateLM):
                 text = ""
                 for word in string:
                     prob = random.random()
-                    if prob < 0.3 and word in self.chaizi_collected_words:
+                    if prob < 0.3 and word in self.mapping_dict_collected_words:
                         components = "".join(self.chaizi_dict.chaizi(word)[0])
                         if prob < 0.15:
                             text += f"{self.bor}{components}{self.eor}"
@@ -891,7 +923,7 @@ class HFLM(TemplateLM):
             for idx, string in enumerate(strings):
                 text = ""
                 for word in string:
-                    if word in self.chaizi_collected_words:
+                    if word in self.mapping_dict_collected_words:
                         encoded = self.tokenizer(word, return_attention_mask=False)
                         if len(encoded['input_ids']) == 2:
                             text += word
@@ -902,7 +934,19 @@ class HFLM(TemplateLM):
                         text += word
                 strings[idx] = text
         elif self.tokenize_settings == "rare_words_ids":
-            pass
+            for idx, string in enumerate(strings):
+                text = ""
+                for word in string:
+                    if word in self.mapping_dict_collected_words:
+                        encoded = self.tokenizer(word, return_attention_mask=False, add_special_tokens=True)
+                        if len(encoded['input_ids']) == 2:
+                            text += word
+                        else:
+                            components = "".join(self.ids_dict.disassemble(word)[0])
+                            text += self.bor + components + self.eor
+                    else:
+                        text += word
+                strings[idx] = text
 
         special_tokens_kwargs = {"add_special_tokens": True}
         encoding = self.tokenizer(
