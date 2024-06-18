@@ -263,7 +263,7 @@ class HFLM(TemplateLM):
                 self._device = torch.device(device)
 
             # TODO: update this to be less of a hack once subfolder is fixed in HF
-            revision = revision + ("/" + subfolder if subfolder is not None else "")
+            # revision = revision + ("/" + subfolder if subfolder is not None else "")
 
             self._get_config(
                 pretrained,
@@ -281,6 +281,7 @@ class HFLM(TemplateLM):
             self._create_model(
                 pretrained=pretrained,
                 revision=revision,
+                subfolder=subfolder,
                 dtype=dtype,
                 trust_remote_code=trust_remote_code,
                 parallelize=parallelize,
@@ -561,6 +562,7 @@ class HFLM(TemplateLM):
         self,
         pretrained: str,
         revision: Optional[str] = "main",
+        subfolder: Optional[str] = None,
         dtype: Optional[Union[str, torch.dtype]] = "auto",
         trust_remote_code: Optional[bool] = False,
         # arguments used for splitting a model across GPUs naively.
@@ -626,6 +628,7 @@ class HFLM(TemplateLM):
             self._model = self.AUTO_MODEL_CLASS.from_pretrained(
                 pretrained,
                 revision=revision,
+                subfolder=subfolder,
                 torch_dtype=get_dtype(dtype),
                 trust_remote_code=trust_remote_code,
                 **model_kwargs,
@@ -659,7 +662,7 @@ class HFLM(TemplateLM):
                 if version.parse(PEFT_VERSION) < version.parse("0.4.0"):
                     raise AssertionError("load_in_4bit requires peft >= 0.4.0")
             self._model = PeftModel.from_pretrained(
-                self._model, peft, revision=revision
+                self._model, peft, revision=revision, subfolder=subfolder,
             )
         elif delta:
             if autogptq:
@@ -669,6 +672,7 @@ class HFLM(TemplateLM):
             _model_delta = self.AUTO_MODEL_CLASS.from_pretrained(
                 delta,
                 revision=revision,
+                subfolder=subfolder,
                 torch_dtype=get_dtype(dtype),
                 trust_remote_code=trust_remote_code,
                 **model_kwargs,
