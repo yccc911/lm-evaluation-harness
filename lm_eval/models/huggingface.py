@@ -99,7 +99,7 @@ class ChaiziDict():
                     self.dictionary[character].append(parts)
 
     def _construct_base_vocab(self):
-        self.base_vocab = {self.eow}
+        self.base_vocab = {}
         for parts in self.dictionary.values():
             self.base_vocab.update(parts[0])
 
@@ -123,7 +123,6 @@ class ChaiziDict():
         return self.dictionary.get(word, None)
 
     def ensemble(self, components: str):
-        components = components.rstrip(self.eow)
         return self.reverse_dict.get(components, None)
 
 class IDSDict():
