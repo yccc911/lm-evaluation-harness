@@ -868,7 +868,7 @@ class HFLM(TemplateLM):
                     if len(encoded['input_ids']) == 2:
                         text += word
                     else:
-                        components = "".join(self.ids_dict.disassemble(word)[0])
+                        components = "".join(self.ids_dict.disassemble(word))
                         text += self.bor + components + self.eor
                 else:
                     text += word
@@ -941,7 +941,7 @@ class HFLM(TemplateLM):
                         if len(encoded['input_ids']) == 2:
                             text += word
                         else:
-                            components = "".join(self.ids_dict.disassemble(word)[0])
+                            components = "".join(self.ids_dict.disassemble(word))
                             text += self.bor + components + self.eor
                     else:
                         text += word
