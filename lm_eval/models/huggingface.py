@@ -335,7 +335,7 @@ class HFLM(TemplateLM):
         )
 
         self.tokenize_settings = tokenize_settings
-        if self.tokenize_settings == "rare_words_chaizi":
+        if self.tokenize_settings == "rare_words_chaizi" or self.tokenize_settings == "random_replacement":
             self._create_chaizi_dict()
         elif self.tokenize_settings == "rare_words_ids":
             self._create_ids_dict()
