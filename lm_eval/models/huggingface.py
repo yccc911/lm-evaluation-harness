@@ -99,7 +99,7 @@ class ChaiziDict():
                     self.dictionary[character].append(parts)
 
     def _construct_base_vocab(self):
-        self.base_vocab = {}
+        self.base_vocab = set()
         for parts in self.dictionary.values():
             self.base_vocab.update(parts[0])
 
