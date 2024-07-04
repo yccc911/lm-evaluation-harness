@@ -969,7 +969,7 @@ class HFLM(TemplateLM):
         return encoding["input_ids"], encoding["attention_mask"]
 
     def tok_decode(self, tokens, skip_special_tokens=False):
-        decoded = self.tokenizer.decode(tokens, skip_special_tokens=skip_special_tokens)
+        decoded = self.tokenizer.decode(tokens, skip_special_tokens=False)
 
         # for cases with special tokens
         replacements = re.findall(r'<\|start_of_replacement\|>(.*?)<\|end_of_replacement\|>', decoded)
