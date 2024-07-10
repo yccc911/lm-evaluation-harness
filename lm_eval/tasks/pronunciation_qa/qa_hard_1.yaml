@@ -1,6 +1,6 @@
 group: hard_1
 task: qa_hard_1
-description: "以下為有關中文讀音的單選題，請提供正確答案的選項。\n\n"
+description: "You are a helpful AI assistant who can understand Traditional Chinese effortlessly. Below is a question regarding the pronunciation of the language.\n\n"
 
 dataset_path: Charlie911/mandarin_pronounciation_qa # the name of the dataset on the HF Hub.
 dataset_name: null # the dataset configuration to use. Leave `null` if your dataset does not require a config to be passed. See https://huggingface.co/docs/datasets/load_hub#configurations for more info.
